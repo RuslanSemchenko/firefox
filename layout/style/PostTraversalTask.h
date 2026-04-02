@@ -81,8 +81,7 @@ class PostTraversalTask {
     FontInfoUpdate,
   };
 
-  explicit PostTraversalTask(Type aType)
-      : mType(aType), mTarget(nullptr) {}
+  explicit PostTraversalTask(Type aType) : mType(aType), mTarget(nullptr) {}
 
   const Type mType;
   void* mTarget = nullptr;
