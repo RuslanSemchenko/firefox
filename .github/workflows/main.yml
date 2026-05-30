@@ -1,0 +1,63 @@
+name: Build SpiderMonkey
+
+on:
+  push:
+    branches: [ autoland ]
+  pull_request:
+    branches: [ autoland ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        # Так как ты используешь single-branch, забираем только актуальный коммит
+        persist-credentials: false
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Set up Rust
+      uses: actions-rust-lang/setup-rust-toolchain@v1
+      with:
+        toolchain: stable
+
+    - name: Install System Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y watchman llvm clang uuid-dev xorg-dev libx11-xcb-dev libasound2-dev libpulse-dev
+
+    - name: Bootstrap Mach
+      run: |
+        # Запуск начальной конфигурации mozilla-build в неинтерактивном режиме
+        ./mach bootstrap --application-choice=js
+
+    - name: Configure Build System
+      run: |
+        # Создаем отдельную директорию для сборки вне исходников
+        mkdir obj-spider
+        cd obj-spider
+        
+        # Конфигурируем именно JS-шелл. 
+        # Добавь --enable-debug и --enable-fuzzing, если собираешь под фаззинг (libFuzzer)
+        ../js/src/configure --enable-application=js --disable-jemalloc
+
+    - name: Compile SpiderMonkey
+      run: |
+        cd obj-spider
+        # Сборка движка
+        make -j$(nproc)
+
+    - name: Upload JS Shell Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: spidermonkey-shell
+        path: |
+          obj-spider/dist/bin/js
+          obj-spider/dist/bin/*.so
